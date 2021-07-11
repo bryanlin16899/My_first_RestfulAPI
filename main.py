@@ -8,9 +8,11 @@ app = Flask(__name__)
 ##Connect to Database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cafes.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JSON_AS_ASCII'] = False
 db = SQLAlchemy(app)
 db.make_connector()
 
+API_KEY_FOR_DELETE = "TOPSECRETAPIKEY"
 
 ##Cafe TABLE Configuration
 class Cafe(db.Model):
@@ -121,13 +123,31 @@ def post_new_cafe():
     db.session.commit()
     return jsonify(response={"success": "Successfully added the new cafe."})
 
-## HTTP GET - Read Record
 
-## HTTP POST - Create Record
+@app.route("/update-price/<cafe_id>", methods=["PATCH"])
+def update_price(cafe_id):
+    query_price = request.args.get("price")
+    cafe_selected = Cafe.query.filter_by(id=cafe_id).first()
+    if cafe_selected:
+        cafe_selected.coffee_price = query_price
+        db.session.commit()
+        return jsonify(response={"success": "Successfully update the price."})
+    else:
+        return jsonify(response={"error": "Sorry, A cafe with that is was not found in the database"})
 
-## HTTP PUT/PATCH - Update Record
 
-## HTTP DELETE - Delete Record
+@app.route("/report-closed/<cafe_id>", methods=["DELETE"])
+def delete_cafe(cafe_id):
+    cafe_selected = Cafe.query.filter_by(id=cafe_id).first()
+    api_key = request.args.get("api-key")
+    if cafe_selected and api_key == API_KEY_FOR_DELETE:
+        db.session.delete(cafe_selected)
+        db.session.commit()
+        return jsonify(response={"success": "Successfully delete the cafe."})
+    elif not cafe_selected:
+        return jsonify(response={"error": "Sorry, A cafe with that is was not found in the database"})
+    else:
+        return jsonify(response={"error": "Sorry, That's not allowed. Make sur you have the correct api_key."})
 
 
 if __name__ == '__main__':
